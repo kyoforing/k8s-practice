@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: p2ska-kyocheng
+  namespace: p2ska
+spec:
+  selector:
+    app: p2ska-kyocheng
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: p2ska-kyocheng
+  namespace: p2ska
+spec:
+  rules:
+  - host: hostUrl
+    http:
+      paths:
+      - backend:
+          serviceName: p2ska-kyocheng
+          servicePort: 80
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: p2ska-config-kyocheng
+  namespace: p2ska
+data:
+  db-url: dbUrl
+  email: email
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: p2ska-kyocheng
+  namespace: p2ska
+  labels:
+    app: p2ska-kyocheng
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: p2ska-kyocheng
+  template:
+    metadata:
+      labels:
+        app: p2ska-kyocheng
+    spec:
+      containers:
+      - env:
+        - name: USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: db-credential
+        - name: PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: db-credential
+        - name: DB_URL
+          valueFrom:
+            configMapKeyRef:
+              key: db-url
+              name: p2ska-config-kyocheng
+        - name: EMAIL
+          valueFrom:
+            configMapKeyRef:
+              key: email
+              name: p2ska-config-kyocheng
+        image: imageUrl
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health/live
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: p2ska-jackyhung
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health/ready
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: 700m
+            memory: 100Mi
+          requests:
+            cpu: 10m
+            memory: 30Mi
